@@ -5,7 +5,7 @@
 
 {% block content %}
 
-<!-- ── KPI Row ──────────────────────────────────── -->
+<!-- KPI Row -->
 <div class="kpi-grid">
   <div class="kpi-card kpi-blue animate-in">
     <div class="kpi-icon">⬡</div>
@@ -44,7 +44,7 @@
   </div>
 </div>
 
-<!-- ── Main grid: topology + algorithms ─────────── -->
+<!-- Main grid: topology + algorithms -->
 <div class="content-grid two-col" style="margin-bottom:18px">
 
   <!-- Topology panel -->
@@ -103,36 +103,81 @@
           </div>
         </div>
 
-        <!-- Dijkstra -->
-        <div class="algo-card">
-          <div class="algo-card-header">
+        <!-- ── Dijkstra interativo ────────────────────── -->
+        <div class="algo-card" id="dijkstra-card" style="border-color:rgba(239,68,68,0.25);background:linear-gradient(135deg,rgba(239,68,68,0.05),transparent)">
+          <div class="algo-card-header" style="margin-bottom:10px">
             <span class="algo-name" style="color:var(--red)">Dijkstra — Menor Caminho</span>
-            <span class="panel-badge badge-red">{{ algo.source }} → {{ algo.target }}</span>
+            <span class="panel-badge badge-red" id="dijkstra-route-badge">{{ algo.source }} → {{ algo.target }}</span>
           </div>
-          <div class="algo-path" id="dijkstra-path">
+
+          <!-- Seletor de origem / destino -->
+          <div style="display:flex;gap:8px;margin-bottom:10px;align-items:flex-end">
+            <div style="flex:1">
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:4px">Origem</div>
+              <select id="dijk-source" class="form-select" style="padding:7px 10px;font-size:12px">
+                {% for node in nodes %}
+                <option value="{{ node.id }}" {% if node.id == algo.source %}selected{% endif %}>{{ node.id }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div style="color:var(--red);font-size:18px;padding-bottom:6px;flex-shrink:0">→</div>
+            <div style="flex:1">
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:4px">Destino</div>
+              <select id="dijk-target" class="form-select" style="padding:7px 10px;font-size:12px">
+                {% for node in nodes %}
+                <option value="{{ node.id }}" {% if node.id == algo.target %}selected{% endif %}>{{ node.id }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button id="dijk-btn" onclick="calcDijkstra()" class="btn btn-danger" style="padding:7px 14px;flex-shrink:0">
+              ◈ Calcular
+            </button>
+          </div>
+
+          <!-- Resultado do caminho -->
+          <div id="dijkstra-result">
+            <div class="algo-path" id="dijkstra-path">
+              {% if algo.shortest_path %}
+                {% for node in algo.shortest_path %}
+                  <span class="path-node highlight">{{ node }}</span>
+                  {% if not loop.last %}<span style="color:var(--red);font-size:10px"> → </span>{% endif %}
+                {% endfor %}
+              {% else %}
+                <span style="color:var(--text-muted)">Selecione origem e destino</span>
+              {% endif %}
+            </div>
             {% if algo.shortest_path %}
-              {% for node in algo.shortest_path %}
-                <span class="path-node highlight">{{ node }}</span>
-                {% if not loop.last %}<span style="color:var(--red);font-size:10px">→</span>{% endif %}
-              {% endfor %}
+            <div class="cost-row" style="margin-top:8px">
+              <span class="cost-label">Hops:</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--blue);font-weight:700" id="dijkstra-hops">{{ algo.shortest_path | length - 1 }}</span>
+              <span class="cost-label" style="margin-left:12px">Custo total:</span>
+              <span class="cost-value" id="dijkstra-cost">{{ algo.cost }}</span>
+            </div>
             {% else %}
-              <span style="color:var(--red-dim)">Sem caminho disponível</span>
+            <div class="cost-row" style="margin-top:8px" id="cost-row" style="display:none">
+              <span class="cost-label">Hops:</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--blue);font-weight:700" id="dijkstra-hops">—</span>
+              <span class="cost-label" style="margin-left:12px">Custo total:</span>
+              <span class="cost-value" id="dijkstra-cost">—</span>
+            </div>
             {% endif %}
           </div>
-          {% if algo.shortest_path %}
-          <div class="cost-row">
-            <span class="cost-label">Custo total:</span>
-            <span class="cost-value" id="dijkstra-cost">{{ algo.cost }}</span>
+
+          <!-- Loading / erro -->
+          <div id="dijkstra-loading" style="display:none;text-align:center;padding:10px">
+            <div class="spinner" style="width:20px;height:20px;border-width:2px;margin:auto"></div>
           </div>
-          {% endif %}
+          <div id="dijkstra-error" style="display:none" class="alert alert-error" style="margin-top:8px"></div>
+
         </div>
+        <!-- fim Dijkstra -->
 
       </div>
     </div>
   </div>
 </div>
 
-<!-- ── Bottom grid: devices + edges ─────────────── -->
+<!-- Bottom grid: devices + edges + status -->
 <div class="content-grid three-col">
 
   <!-- Devices -->
@@ -242,7 +287,75 @@
 
 {% block scripts %}
 <script>
-// Auto-refresh graph image and KPIs every 30s
+function calcDijkstra() {
+  const source = document.getElementById('dijk-source').value;
+  const target = document.getElementById('dijk-target').value;
+
+  // Reset state
+  document.getElementById('dijkstra-error').style.display = 'none';
+  document.getElementById('dijkstra-result').style.opacity = '0.3';
+  document.getElementById('dijkstra-loading').style.display = 'block';
+  document.getElementById('dijk-btn').disabled = true;
+
+  fetch(`/api/dijkstra?source=${encodeURIComponent(source)}&target=${encodeURIComponent(target)}`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('dijkstra-loading').style.display = 'none';
+      document.getElementById('dijkstra-result').style.opacity = '1';
+      document.getElementById('dijk-btn').disabled = false;
+
+      if (d.error) {
+        document.getElementById('dijkstra-error').textContent = '⚠ ' + d.error;
+        document.getElementById('dijkstra-error').style.display = 'flex';
+        document.getElementById('dijkstra-path').innerHTML = '<span style="color:var(--text-muted)">Sem caminho disponível</span>';
+        document.getElementById('dijkstra-cost').textContent = '—';
+        document.getElementById('dijkstra-hops').textContent = '—';
+        return;
+      }
+
+      // Update badge
+      document.getElementById('dijkstra-route-badge').textContent = d.source + ' → ' + d.target;
+
+      // Render path nodes
+      let html = '';
+      d.path.forEach((node, i) => {
+        html += `<span class="path-node highlight">${node}</span>`;
+        if (i < d.path.length - 1) html += `<span style="color:var(--red);font-size:10px"> → </span>`;
+      });
+      document.getElementById('dijkstra-path').innerHTML = html;
+
+      // Update cost & hops
+      document.getElementById('dijkstra-cost').textContent = d.cost;
+      document.getElementById('dijkstra-hops').textContent = d.hops;
+
+      // Update KPI card
+      document.getElementById('kpi-cost').textContent = d.cost;
+
+      // Refresh graph image with new highlighted path
+      const img = document.getElementById('topology-img');
+      img.style.opacity = '0.5';
+      img.src = '/static/images/graph.png?t=' + d.graph_ts;
+      img.onload = () => { img.style.opacity = '1'; };
+
+      // Animate dijkstra card border briefly
+      const card = document.getElementById('dijkstra-card');
+      card.style.borderColor = 'var(--red)';
+      card.style.boxShadow = '0 0 16px rgba(239,68,68,0.2)';
+      setTimeout(() => {
+        card.style.borderColor = 'rgba(239,68,68,0.25)';
+        card.style.boxShadow = 'none';
+      }, 1200);
+    })
+    .catch(() => {
+      document.getElementById('dijkstra-loading').style.display = 'none';
+      document.getElementById('dijkstra-result').style.opacity = '1';
+      document.getElementById('dijk-btn').disabled = false;
+      document.getElementById('dijkstra-error').textContent = '⚠ Erro ao conectar com o servidor.';
+      document.getElementById('dijkstra-error').style.display = 'flex';
+    });
+}
+
+// Auto-refresh every 30s
 setInterval(function() {
   fetch('/api/graph-data')
     .then(r => r.json())
@@ -251,17 +364,12 @@ setInterval(function() {
       document.getElementById('kpi-users').textContent    = d.stats.user;
       document.getElementById('kpi-routers').textContent  = d.stats.router;
       document.getElementById('kpi-edges').textContent    = d.stats.total_edges;
-      document.getElementById('kpi-cost').textContent     = d.cost;
+      document.getElementById('topo-nodes-badge').textContent = d.stats.total_nodes + ' nós';
       document.getElementById('stat-routers').textContent = d.stats.router;
       document.getElementById('stat-servers').textContent = d.stats.server;
       document.getElementById('stat-users').textContent   = d.stats.user;
       document.getElementById('stat-switches').textContent= d.stats.switch;
-      document.getElementById('topo-nodes-badge').textContent = d.stats.total_nodes + ' nós';
-
-      // Refresh graph image
-      const img = document.getElementById('topology-img');
-      img.src = '/static/images/graph.png?t=' + d.graph_ts;
-    }).catch(()=>{});
+    }).catch(() => {});
 }, 30000);
 
 function refreshData() {
@@ -269,17 +377,14 @@ function refreshData() {
   fetch('/api/graph-data')
     .then(r => r.json())
     .then(d => {
-      document.getElementById('kpi-nodes').textContent    = d.stats.total_nodes;
-      document.getElementById('kpi-users').textContent    = d.stats.user;
-      document.getElementById('kpi-routers').textContent  = d.stats.router;
-      document.getElementById('kpi-edges').textContent    = d.stats.total_edges;
-      document.getElementById('kpi-cost').textContent     = d.cost;
+      document.getElementById('kpi-nodes').textContent   = d.stats.total_nodes;
+      document.getElementById('kpi-users').textContent   = d.stats.user;
+      document.getElementById('kpi-routers').textContent = d.stats.router;
+      document.getElementById('kpi-edges').textContent   = d.stats.total_edges;
       const img = document.getElementById('topology-img');
       img.src = '/static/images/graph.png?t=' + d.graph_ts;
     })
-    .finally(() => {
-      document.getElementById('loading').classList.remove('active');
-    });
+    .finally(() => document.getElementById('loading').classList.remove('active'));
 }
 </script>
 {% endblock %}

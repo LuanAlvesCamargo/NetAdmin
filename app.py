@@ -156,6 +156,48 @@ def api_graph_data():
     })
 
 
+@app.route("/api/dijkstra")
+def api_dijkstra():
+    """Calculate shortest path between any two nodes and regenerate graph."""
+    source = request.args.get("source", "").strip()
+    target = request.args.get("target", "").strip()
+
+    G = load_graph()
+    nodes = list(G.nodes())
+
+    if not source or not target:
+        return jsonify({"error": "Informe origem e destino."}), 400
+    if source == target:
+        return jsonify({"error": "Origem e destino devem ser diferentes."}), 400
+    if source not in nodes:
+        return jsonify({"error": f"Nó '{source}' não existe na rede."}), 404
+    if target not in nodes:
+        return jsonify({"error": f"Nó '{target}' não existe na rede."}), 404
+
+    try:
+        if not nx.has_path(G, source, target):
+            return jsonify({"error": f"Sem caminho entre '{source}' e '{target}'."}), 200
+
+        path = nx.dijkstra_path(G, source, target, weight="weight")
+        cost = nx.dijkstra_path_length(G, source, target, weight="weight")
+
+        # Regenerate graph image highlighting this path
+        draw_graph(G, path)
+        ts = int(os.path.getmtime("static/images/graph.png"))
+
+        return jsonify({
+            "source": source,
+            "target": target,
+            "path": path,
+            "cost": cost,
+            "hops": len(path) - 1,
+            "graph_ts": ts,
+            "error": None
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/nodes")
 def api_nodes():
     data = manager.load_data()
