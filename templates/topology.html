@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Topologia da Rede</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <div class="dashboard">
+
+        <aside class="sidebar">
+            <h2>Admin Network</h2>
+
+            <a href="/">Dashboard</a>
+            <a href="/topology">Topologia</a>
+            <a href="/manage">Gerenciar Rede</a>
+        </aside>
+
+        <main class="content">
+
+            <h1>Topologia da Rede</h1>
+
+            <div class="topology-panel">
+
+                <img src="{{ url_for('static', filename='images/graph.png') }}" alt="Topologia">
+
+            </div>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

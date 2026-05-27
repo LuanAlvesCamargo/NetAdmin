@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Network Admin Dashboard</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+    <div class="dashboard">
+
+        <aside class="sidebar">
+
+            <h2>Admin Network</h2>
+
+            <a href="/">Dashboard</a>
+
+            <a href="/topology">
+                Topologia
+            </a>
+
+            <a href="/manage">
+                Gerenciar Rede
+            </a>
+
+        </aside>
+
+        <main class="content">
+
+            <header class="page-header">
+
+                <h1>
+                    Painel Administrativo da Rede
+                </h1>
+
+                <p>
+                    Monitoramento Inteligente com Teoria dos Grafos
+                </p>
+
+            </header>
+
+            <section class="topology-preview">
+
+                <h2>Topologia Atual da Rede</h2>
+
+                <img src="{{ url_for('static', filename='images/graph.png') }}" alt="Topologia da Rede">
+
+            </section>
+
+            <section class="cards">
+
+                <div class="card">
+
+                    <h2>BFS</h2>
+
+                    <p>
+                        {{ bfs_result }}
+                    </p>
+
+                </div>
+
+                <div class="card">
+
+                    <h2>DFS</h2>
+
+                    <p>
+                        {{ dfs_result }}
+                    </p>
+
+                </div>
+
+                <div class="card">
+
+                    <h2>Dijkstra</h2>
+
+                    <p>
+                        <strong>Melhor rota:</strong>
+                    </p>
+
+                    <p>
+                        {{ shortest_path }}
+                    </p>
+
+                    <p>
+                        <strong>Custo:</strong>
+                        {{ cost }}
+                    </p>
+
+                </div>
+
+            </section>
+
+            <section class="network-status">
+
+                <h2>Status da Rede</h2>
+
+                <div class="status-grid">
+
+                    <div class="status-card">
+                        <h3>Roteadores</h3>
+                        <p>4 ativos</p>
+                    </div>
+
+                    <div class="status-card">
+                        <h3>Usuários</h3>
+                        <p>4 conectados</p>
+                    </div>
+
+                    <div class="status-card">
+                        <h3>Servidor</h3>
+                        <p>Online</p>
+                    </div>
+
+                    <div class="status-card">
+                        <h3>Menor Caminho</h3>
+                        <p>Calculado</p>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>
